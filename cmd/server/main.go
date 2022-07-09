@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strings"
 	"syscall"
 	"time"
 
 	"go.uber.org/zap"
+
+	req "github.com/max-mulawa/httpium/http/request"
 )
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Resources_and_specifications
+// https://datatracker.ietf.org/doc/html/rfc7230#section-2.1
 func main() {
 
 	logger, err := zap.NewProduction()
@@ -68,13 +70,15 @@ func handleConnection(conn net.Conn, logger *zap.SugaredLogger) {
 			break
 		}
 
-		request := string(buffer[:count])
-		logger.Infow("Request received", "content", request)
+		content := string(buffer[:count])
+		logger.Infow("Request received", "content", content)
 
-		requestLines := strings.Split(request, "\r\n")
-		firstLine := requestLines[0]
-
-		logger.Info(firstLine)
+		request, err := req.Parse(content)
+		if err != nil {
+			logger.Errorw("failed to parse request", "err", err)
+			break
+		}
+		logger.Info(request)
 
 		count, err = conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Length: 12\r\nContent-Type: text/plain\r\n\r\nHello World!"))
 		if err != nil {
