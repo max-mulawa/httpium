@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"syscall"
 	"time"
 
 	"go.uber.org/zap"
 
-	req "github.com/max-mulawa/httpium/http/request"
+	req "github.com/max-mulawa/httpium/pkg/http/request"
 )
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Resources_and_specifications
@@ -25,7 +26,15 @@ func main() {
 	defer logger.Sync()
 	suggar := logger.Sugar()
 
-	port := 8080
+	port := uint64(8080)
+	strport := os.Getenv("HTTP_PORT")
+	if strport != "" {
+		port, err = strconv.ParseUint(strport, 10, 32)
+		if err != nil {
+			suggar.Errorw("invalid port in environment variable", "invalid", strport, "err", err)
+			os.Exit(4)
+		}
+	}
 
 	lc := net.ListenConfig{
 		Control:   onListeningControl,
@@ -33,7 +42,6 @@ func main() {
 	}
 
 	ln, err := lc.Listen(context.Background(), "tcp", fmt.Sprintf(":%d", port))
-	//ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		suggar.Errorw("server failed to listen on port", "port", port)
 		os.Exit(2)
