@@ -18,6 +18,8 @@ import (
 // https://datatracker.ietf.org/doc/html/rfc7230#section-2.1
 func main() {
 
+	//todo: systemd will send SIGTERM, and after a timeout also SIGKILL
+
 	logger, err := zap.NewProduction()
 	if err != nil {
 		fmt.Printf("failed to initialize logger %+v", err)

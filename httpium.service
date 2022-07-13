@@ -1,0 +1,13 @@
+[Unit]
+Description=very simple http server httpium
+After=syslog.target network.target
+
+[Service]
+ExecStart=/usr/sbin/httpium
+Type=simple
+Restart=always
+RestartSec=2
+
+
+[Install]
+WantedBy=multi-user.target
