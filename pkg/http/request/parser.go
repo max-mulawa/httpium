@@ -3,6 +3,7 @@ package request
 import (
 	"fmt"
 	"strings"
+	"github.com/max-mulawa/httpium/pkg/http"
 )
 
 func Parse(request string) (*Request, error) {
@@ -43,6 +44,6 @@ func parseRequestLine(line string) (*Request, error) {
 	r := &Request{}
 	r.Method = HttpMethod(tokens[0])
 	r.Path = tokens[1]
-	r.Protocol = ProtocolVersion(tokens[2])
+	r.Protocol = http.ProtocolVersion(tokens[2])
 	return r, nil
 }

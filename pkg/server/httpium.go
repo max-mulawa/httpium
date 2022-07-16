@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	req "github.com/max-mulawa/httpium/pkg/http/request"
+	"github.com/max-mulawa/httpium/pkg/http/response"
 )
 
 type HttpiumServer struct {
@@ -78,7 +79,22 @@ func handleConnection(conn net.Conn, logger *zap.SugaredLogger) {
 		}
 		logger.Info(request)
 
-		count, err = conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Length: 12\r\nContent-Type: text/plain\r\n\r\nHello World!"))
+		response := &response.HttpResponse{
+			Protocol: "HTTP/1.1",
+			Code:     200,
+			Headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+			Content: []byte("Hello World!"),
+		}
+
+		payload, err := response.Build()
+		if err != nil {
+			logger.Errorw("Failed to build reponse", "err", err, "response", response)
+			break
+		}
+
+		count, err = conn.Write([]byte(payload))
 		if err != nil {
 			logger.Errorw("Failed to read", "err", err, "bytes", count)
 			break
