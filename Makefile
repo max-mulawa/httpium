@@ -11,6 +11,9 @@ build:
 test:
 	go test ./...
 
+run:  build
+	./bin/httpium
+
 clean: 
 	rm -rf bin*
 
