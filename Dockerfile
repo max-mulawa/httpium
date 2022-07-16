@@ -8,11 +8,11 @@ RUN go mod download
 COPY . ./
 
 RUN mkdir /app 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/server ./cmd/server 
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/httpium ./cmd/server 
 #RUN ls /app -la
 
 FROM alpine:latest as deploy
-COPY --from=build /app/server .
-ENTRYPOINT ["./server"]
+COPY --from=build /app/httpium .
+ENTRYPOINT ["./httpium"]
 
 EXPOSE 8080

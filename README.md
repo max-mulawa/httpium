@@ -1,9 +1,12 @@
-Build docker
-```
-docker build . -t localhost/httpium:dev
+# httpium
+
+httpium is a simple http server written in go.
+
+# get started
+
+This will bring up httpium server listening on port 8080
+```console
+./bin/httpium
 ```
 
-Run httpium on port 8080
-```
-docker run --rm --name httpium -p 8080:8080 localhost/httpium:dev
-```
+

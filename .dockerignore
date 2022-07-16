@@ -7,3 +7,5 @@ dev.docker-compose.yml
 .env
 .gitignore
 .git
+scripts
+Makefile
