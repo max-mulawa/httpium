@@ -87,15 +87,6 @@ func handleConnection(conn net.Conn, s *HttpiumServer) {
 		}
 		s.lg.Info(request)
 
-		// response := &response.HttpResponse{
-		// 	Protocol: "HTTP/1.1",
-		// 	Code:     200,
-		// 	Headers: map[string]string{
-		// 		"Content-Type": "text/plain",
-		// 	},
-		// 	Content: []byte("Hello World!"),
-		// }
-
 		response := s.handler.Handle(request)
 
 		payload, err := response.Build()

@@ -15,6 +15,8 @@ import (
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Resources_and_specifications
 // https://datatracker.ietf.org/doc/html/rfc7230#section-2.1
+// https://developer.mozilla.org/en-US/docs/Web/HTTP
+
 func main() {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, syscall.SIGTERM)
