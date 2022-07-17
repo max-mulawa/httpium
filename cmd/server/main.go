@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/max-mulawa/httpium/pkg/server"
+	"github.com/max-mulawa/httpium/pkg/server/config"
 )
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Resources_and_specifications
@@ -26,14 +27,20 @@ func main() {
 	defer logger.Sync()
 	lg := logger.Sugar()
 
-	port := uint64(8080)
+	wd, _ := os.Getwd()
+	lg.Infow("working directory", zap.String("wd", wd))
+
+	config := config.NewHttpiumConfig()
+	config.Load()
+
 	strport := os.Getenv("HTTP_PORT")
 	if strport != "" {
-		port, err = strconv.ParseUint(strport, 10, 32)
+		val, err := strconv.ParseUint(strport, 10, 32)
 		if err != nil {
 			lg.Errorw("invalid port in environment variable", "invalid", strport, "err", err)
 			os.Exit(4)
 		}
+		config.Server.Port = uint(val)
 	}
 
 	go func() {
@@ -42,6 +49,6 @@ func main() {
 		os.Exit(0)
 	}()
 
-	server := server.NewServer(lg, port)
+	server := server.NewServer(lg, config)
 	server.Start()
 }

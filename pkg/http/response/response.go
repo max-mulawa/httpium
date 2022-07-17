@@ -21,6 +21,7 @@ var codeAsText map[HttpResponseCode]string
 func init() {
 	codeAsText = map[HttpResponseCode]string{
 		HttpResponseCode(200): "OK",
+		HttpResponseCode(404): "Not Found",
 	}
 }
 
@@ -35,8 +36,19 @@ func (r *HttpResponse) Build() ([]byte, error) {
 		builder.WriteString("\r\n")
 		builder.Write(r.Content)
 	}
-	//"HTTP/1.1 200 OK\r\nContent-Length: 12\r\nContent-Type: text/plain\r\n\r\nHello World!"
+
 	return []byte(builder.String()), nil
+}
+
+func Response404() *HttpResponse {
+	return &HttpResponse{
+		Protocol: "HTTP/1.1",
+		Code:     404,
+		Headers: map[string]string{
+			"Content-Type": "text/html",
+		},
+		Content: []byte("<html>Page not found</html>"),
+	}
 }
 
 func (c HttpResponseCode) getCodeAsText() string {

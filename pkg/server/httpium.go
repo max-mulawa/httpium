@@ -12,17 +12,25 @@ import (
 
 	req "github.com/max-mulawa/httpium/pkg/http/request"
 	"github.com/max-mulawa/httpium/pkg/http/response"
+	"github.com/max-mulawa/httpium/pkg/server/config"
+	"github.com/max-mulawa/httpium/pkg/server/static"
 )
 
 type HttpiumServer struct {
-	port uint64
-	lg   *zap.SugaredLogger
+	config  *config.HttpiumConfig
+	lg      *zap.SugaredLogger
+	handler HttpHandler
 }
 
-func NewServer(lg *zap.SugaredLogger, port uint64) *HttpiumServer {
+type HttpHandler interface {
+	Handle(*req.HttpRequest) *response.HttpResponse
+}
+
+func NewServer(lg *zap.SugaredLogger, config *config.HttpiumConfig) *HttpiumServer {
 	return &HttpiumServer{
-		port: port,
-		lg:   lg,
+		config:  config,
+		lg:      lg,
+		handler: static.NewStaticFiles(lg, config.Content.StaticDir),
 	}
 }
 
@@ -32,9 +40,9 @@ func (s *HttpiumServer) Start() {
 		KeepAlive: time.Second * 10,
 	}
 
-	ln, err := lc.Listen(context.Background(), "tcp", fmt.Sprintf(":%d", s.port))
+	ln, err := lc.Listen(context.Background(), "tcp", fmt.Sprintf(":%d", s.config.Server.Port))
 	if err != nil {
-		s.lg.Errorw("server failed to listen on port", "port", s.port)
+		s.lg.Errorw("server failed to listen on port", "port", s.config.Server.Port)
 		os.Exit(2)
 	}
 	defer func() {
@@ -49,54 +57,56 @@ func (s *HttpiumServer) Start() {
 		s.lg.Errorw("failed to extract hostname from listener")
 		os.Exit(3)
 	}
-	s.lg.Infow("server is listening for incoming connections", "host", host, "port", s.port)
+	s.lg.Infow("server is listening for incoming connections", "host", host, "port", s.config.Server.Port)
 
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			s.lg.Errorw("Failed to accept connection", "err", err)
 		}
-		go handleConnection(conn, s.lg)
+		go handleConnection(conn, s)
 	}
 }
 
-func handleConnection(conn net.Conn, logger *zap.SugaredLogger) {
+func handleConnection(conn net.Conn, s *HttpiumServer) {
 	for {
 		buffer := make([]byte, 1024)
 		count, err := conn.Read(buffer)
 		if err != nil {
-			logger.Errorw("Failed to read", "err", err, "bytes", count)
+			s.lg.Errorw("Failed to read", "err", err, "bytes", count)
 			break
 		}
 
 		content := string(buffer[:count])
-		logger.Infow("Request received", "content", content)
+		s.lg.Infow("Request received", "content", content)
 
 		request, err := req.Parse(content)
 		if err != nil {
-			logger.Errorw("failed to parse request", "err", err)
+			s.lg.Errorw("failed to parse request", "err", err)
 			break
 		}
-		logger.Info(request)
+		s.lg.Info(request)
 
-		response := &response.HttpResponse{
-			Protocol: "HTTP/1.1",
-			Code:     200,
-			Headers: map[string]string{
-				"Content-Type": "text/plain",
-			},
-			Content: []byte("Hello World!"),
-		}
+		// response := &response.HttpResponse{
+		// 	Protocol: "HTTP/1.1",
+		// 	Code:     200,
+		// 	Headers: map[string]string{
+		// 		"Content-Type": "text/plain",
+		// 	},
+		// 	Content: []byte("Hello World!"),
+		// }
+
+		response := s.handler.Handle(request)
 
 		payload, err := response.Build()
 		if err != nil {
-			logger.Errorw("Failed to build reponse", "err", err, "response", response)
+			s.lg.Errorw("Failed to build reponse", "err", err, "response", response)
 			break
 		}
 
 		count, err = conn.Write([]byte(payload))
 		if err != nil {
-			logger.Errorw("Failed to read", "err", err, "bytes", count)
+			s.lg.Errorw("Failed to read", "err", err, "bytes", count)
 			break
 		}
 	}

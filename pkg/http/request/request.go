@@ -2,7 +2,7 @@ package request
 
 import "github.com/max-mulawa/httpium/pkg/http"
 
-type Request struct {
+type HttpRequest struct {
 	Method    HttpMethod
 	UserAgent string
 	Path      string

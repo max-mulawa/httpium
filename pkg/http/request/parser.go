@@ -3,10 +3,11 @@ package request
 import (
 	"fmt"
 	"strings"
+
 	"github.com/max-mulawa/httpium/pkg/http"
 )
 
-func Parse(request string) (*Request, error) {
+func Parse(request string) (*HttpRequest, error) {
 
 	lines := strings.Split(request, "\r\n")
 	reqLineField := lines[0]
@@ -36,12 +37,12 @@ func parseHeadersLines(headerLiens []string) map[string]string {
 	return headers
 }
 
-func parseRequestLine(line string) (*Request, error) {
+func parseRequestLine(line string) (*HttpRequest, error) {
 	tokens := strings.Split(line, " ")
 	if len(tokens) < 3 {
 		return nil, fmt.Errorf("invalid first request lineh: (%s) with only %d tokens", line, len(tokens))
 	}
-	r := &Request{}
+	r := &HttpRequest{}
 	r.Method = HttpMethod(tokens[0])
 	r.Path = tokens[1]
 	r.Protocol = http.ProtocolVersion(tokens[2])
