@@ -19,7 +19,7 @@ import (
 
 func main() {
 	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc, syscall.SIGTERM)
+	signal.Notify(sigc, syscall.SIGTERM, syscall.SIGHUP)
 
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -46,9 +46,19 @@ func main() {
 	}
 
 	go func() {
-		<-sigc
-		lg.Info("sigterm received")
-		os.Exit(0)
+		sig := <-sigc
+
+		switch sig {
+		case syscall.SIGTERM:
+			lg.Info("sigterm received")
+			os.Exit(0)
+		case syscall.SIGHUP:
+			lg.Info("sighup received, reloading configuration")
+			//todo: reload configuration and restart server
+		default:
+			lg.Info("%v signal received, don't know what to do", sig)
+		}
+
 	}()
 
 	server := server.NewServer(lg, config)

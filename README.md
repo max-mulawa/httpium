@@ -16,3 +16,7 @@ Send SIGTERM to debugging code in vscode
 pgrep debug | xargs kill -s 15
 ```
 
+Trigger daemon reload (triggers ExecReload that in return sends SIGHUP signal to the process)
+```console
+systemctl reload httpium.service
+```
