@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -32,6 +33,17 @@ func main() {
 	wd, _ := os.Getwd()
 	lg.Infow("working directory", zap.String("wd", wd))
 
+	for {
+		context, cancelCtx := context.WithCancel(context.Background())
+		config := loadConfiguration(lg)
+		server := server.NewServer(lg, config, context)
+		go onSignal(lg, server, sigc, cancelCtx)
+		server.Start()
+	}
+
+}
+
+func loadConfiguration(lg *zap.SugaredLogger) *config.HttpiumConfig {
 	config := config.NewHttpiumConfig()
 	config.Load()
 
@@ -44,23 +56,25 @@ func main() {
 		}
 		config.Server.Port = uint(val)
 	}
+	return config
+}
 
-	go func() {
-		sig := <-sigc
+func onSignal(lg *zap.SugaredLogger, server *server.HttpiumServer, sigc chan os.Signal, cancelCtx context.CancelFunc) {
+	sig := <-sigc
 
-		switch sig {
-		case syscall.SIGTERM:
-			lg.Info("sigterm received")
-			os.Exit(0)
-		case syscall.SIGHUP:
-			lg.Info("sighup received, reloading configuration")
-			//todo: reload configuration and restart server
-		default:
-			lg.Info("%v signal received, don't know what to do", sig)
+	switch sig {
+	case syscall.SIGTERM:
+		lg.Info("sigterm received")
+		os.Exit(0)
+	case syscall.SIGHUP:
+		lg.Info("sighup received, reloading configuration")
+		err := server.Stop()
+		if err != nil {
+			os.Exit(1)
 		}
-
-	}()
-
-	server := server.NewServer(lg, config)
-	server.Start()
+		cancelCtx()
+		return
+	default:
+		lg.Info("%v signal received, don't know what to do", sig)
+	}
 }

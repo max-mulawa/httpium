@@ -20,17 +20,20 @@ type HttpiumServer struct {
 	config  *config.HttpiumConfig
 	lg      *zap.SugaredLogger
 	handler HttpHandler
+	ctx     context.Context
+	ln      net.Listener
 }
 
 type HttpHandler interface {
 	Handle(*req.HttpRequest) *response.HttpResponse
 }
 
-func NewServer(lg *zap.SugaredLogger, config *config.HttpiumConfig) *HttpiumServer {
+func NewServer(lg *zap.SugaredLogger, config *config.HttpiumConfig, ctx context.Context) *HttpiumServer {
 	return &HttpiumServer{
 		config:  config,
 		lg:      lg,
 		handler: static.NewStaticFiles(lg, config.Content.StaticDir),
+		ctx:     ctx,
 	}
 }
 
@@ -40,11 +43,13 @@ func (s *HttpiumServer) Start() {
 		KeepAlive: time.Second * 10,
 	}
 
-	ln, err := lc.Listen(context.Background(), "tcp", fmt.Sprintf(":%d", s.config.Server.Port))
+	ln, err := lc.Listen(s.ctx, "tcp", fmt.Sprintf(":%d", s.config.Server.Port))
 	if err != nil {
 		s.lg.Errorw("server failed to listen on port", "port", s.config.Server.Port)
-		os.Exit(2)
+		os.Exit(4)
 	}
+	s.ln = ln
+
 	defer func() {
 		err := ln.Close()
 		if err != nil {
@@ -63,45 +68,64 @@ func (s *HttpiumServer) Start() {
 		conn, err := ln.Accept()
 		if err != nil {
 			s.lg.Errorw("Failed to accept connection", "err", err)
+			break
 		}
-		go handleConnection(conn, s)
+		go handleConnection(conn, s.ctx, s)
 	}
 }
 
-func handleConnection(conn net.Conn, s *HttpiumServer) {
-	for {
-		buffer := make([]byte, 1024)
-		count, err := conn.Read(buffer)
-		if err != nil {
-			s.lg.Errorw("Failed to read", "err", err, "bytes", count)
-			break
-		}
-
-		content := string(buffer[:count])
-		s.lg.Infow("Request received", "content", content)
-
-		request, err := req.Parse(content)
-		if err != nil {
-			s.lg.Errorw("failed to parse request", "err", err)
-			break
-		}
-		s.lg.Info(request)
-
-		response := s.handler.Handle(request)
-
-		payload, err := response.Build()
-		if err != nil {
-			s.lg.Errorw("Failed to build reponse", "err", err, "response", response)
-			break
-		}
-
-		count, err = conn.Write([]byte(payload))
-		if err != nil {
-			s.lg.Errorw("Failed to read", "err", err, "bytes", count)
-			break
+func (s *HttpiumServer) Stop() error {
+	if s.ln != nil {
+		if err := s.ln.Close(); err != nil {
+			s.lg.Errorw("Failed to close listener", "err", err)
+			return err
 		}
 	}
-	conn.Close()
+	return nil
+}
+
+func handleConnection(conn net.Conn, ctx context.Context, s *HttpiumServer) {
+	defer conn.Close()
+	for {
+		select {
+		case <-ctx.Done():
+			s.lg.Info("Closing connection")
+			return
+		default:
+			buffer := make([]byte, 1024)
+			count, err := conn.Read(buffer)
+			if err != nil {
+				s.lg.Errorw("Failed to read", "err", err, "bytes", count)
+				return
+			}
+
+			content := string(buffer[:count])
+			s.lg.Infow("Request received", "content", content)
+
+			request, err := req.Parse(content)
+			if err != nil {
+				s.lg.Errorw("failed to parse request", "err", err)
+				return
+			}
+			s.lg.Info(request)
+
+			response := s.handler.Handle(request)
+
+			payload, err := response.Build()
+			if err != nil {
+				s.lg.Errorw("Failed to build reponse", "err", err, "response", response)
+				return
+			}
+
+			count, err = conn.Write([]byte(payload))
+			if err != nil {
+				s.lg.Errorw("Failed to read", "err", err, "bytes", count)
+				return
+			}
+		}
+
+	}
+
 }
 
 func onListeningControl(network, address string, c syscall.RawConn) error {
