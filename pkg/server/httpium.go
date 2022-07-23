@@ -68,7 +68,10 @@ func (s *HttpiumServer) Start() {
 		conn, err := ln.Accept()
 		if err != nil {
 			s.lg.Errorw("Failed to accept connection", "err", err)
-			break
+			if acceptErr, ok := err.(*net.OpError); ok && acceptErr.Op == "accept" {
+				break
+			}
+			continue
 		}
 		go handleConnection(conn, s.ctx, s)
 	}
@@ -86,46 +89,45 @@ func (s *HttpiumServer) Stop() error {
 
 func handleConnection(conn net.Conn, ctx context.Context, s *HttpiumServer) {
 	defer conn.Close()
+	go onCancel(s.lg, ctx, conn)
 	for {
-		select {
-		case <-ctx.Done():
-			s.lg.Info("Closing connection")
+		buffer := make([]byte, 1024)
+		count, err := conn.Read(buffer)
+		if err != nil {
+			s.lg.Errorw("Failed to read", "err", err, "bytes", count)
 			return
-		default:
-			buffer := make([]byte, 1024)
-			count, err := conn.Read(buffer)
-			if err != nil {
-				s.lg.Errorw("Failed to read", "err", err, "bytes", count)
-				return
-			}
-
-			content := string(buffer[:count])
-			s.lg.Infow("Request received", "content", content)
-
-			request, err := req.Parse(content)
-			if err != nil {
-				s.lg.Errorw("failed to parse request", "err", err)
-				return
-			}
-			s.lg.Info(request)
-
-			response := s.handler.Handle(request)
-
-			payload, err := response.Build()
-			if err != nil {
-				s.lg.Errorw("Failed to build reponse", "err", err, "response", response)
-				return
-			}
-
-			count, err = conn.Write([]byte(payload))
-			if err != nil {
-				s.lg.Errorw("Failed to read", "err", err, "bytes", count)
-				return
-			}
 		}
 
-	}
+		content := string(buffer[:count])
+		s.lg.Infow("Request received", "content", content)
 
+		request, err := req.Parse(content)
+		if err != nil {
+			s.lg.Errorw("failed to parse request", "err", err)
+			return
+		}
+		s.lg.Info(request)
+
+		response := s.handler.Handle(request)
+
+		payload, err := response.Build()
+		if err != nil {
+			s.lg.Errorw("Failed to build reponse", "err", err, "response", response)
+			return
+		}
+
+		count, err = conn.Write([]byte(payload))
+		if err != nil {
+			s.lg.Errorw("Failed to read", "err", err, "bytes", count)
+			return
+		}
+	}
+}
+
+func onCancel(lg *zap.SugaredLogger, ctx context.Context, conn net.Conn) {
+	<-ctx.Done()
+	conn.Close()
+	lg.Info("Closing connection on cancel")
 }
 
 func onListeningControl(network, address string, c syscall.RawConn) error {

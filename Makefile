@@ -34,6 +34,10 @@ docker-run: docker-build
 	$(info Run httpium on port 8080)
 	docker run --rm --name httpium -p 8080:8080 localhost/httpium:dev
 
-setup:
+setup: install-git-hooks
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	./scripts/provision-static-dir.sh
+
+install-git-hooks:
+	cp scripts/git-hook-pre-commit.sh .git/hooks/pre-commit
+	chmod +x .git/hooks/pre-commit

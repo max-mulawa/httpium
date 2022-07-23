@@ -20,14 +20,18 @@ import (
 
 func main() {
 	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(sigc, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 
 	logger, err := zap.NewProduction()
 	if err != nil {
 		fmt.Printf("failed to initialize logger %+v", err)
 		os.Exit(1)
 	}
-	defer logger.Sync()
+	defer func() {
+		if err := logger.Sync(); err != nil {
+			fmt.Printf("faling to sync logger: %v", err)
+		}
+	}()
 	lg := logger.Sugar()
 
 	wd, _ := os.Getwd()
@@ -40,12 +44,13 @@ func main() {
 		go onSignal(lg, server, sigc, cancelCtx)
 		server.Start()
 	}
-
 }
 
 func loadConfiguration(lg *zap.SugaredLogger) *config.HttpiumConfig {
 	config := config.NewHttpiumConfig()
-	config.Load()
+	if err := config.Load(); err != nil {
+		lg.Fatalw("failed to load configuration", "err", err)
+	}
 
 	strport := os.Getenv("HTTP_PORT")
 	if strport != "" {
@@ -64,17 +69,22 @@ func onSignal(lg *zap.SugaredLogger, server *server.HttpiumServer, sigc chan os.
 
 	switch sig {
 	case syscall.SIGTERM:
+	case syscall.SIGINT:
 		lg.Info("sigterm received")
+		stop(server, cancelCtx)
 		os.Exit(0)
 	case syscall.SIGHUP:
 		lg.Info("sighup received, reloading configuration")
-		err := server.Stop()
-		if err != nil {
-			os.Exit(1)
-		}
-		cancelCtx()
-		return
+		stop(server, cancelCtx)
 	default:
 		lg.Info("%v signal received, don't know what to do", sig)
+	}
+}
+
+func stop(server *server.HttpiumServer, cancelCtx context.CancelFunc) {
+	err := server.Stop()
+	cancelCtx()
+	if err != nil {
+		os.Exit(1)
 	}
 }
