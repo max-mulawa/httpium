@@ -5,6 +5,7 @@ After=syslog.target network.target
 [Service]
 ExecStart=/usr/sbin/httpium
 ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s SIGINT $MAINPID
 Type=simple
 Restart=always
 RestartSec=2
