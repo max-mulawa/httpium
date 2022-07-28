@@ -20,10 +20,12 @@ type HttpiumConfig struct {
 	Content ContentOptions
 }
 
+var defaultPort uint = 8080
+
 func NewHttpiumConfig() *HttpiumConfig {
 	return &HttpiumConfig{
 		Server: ServerOptions{
-			Port: 8080,
+			Port: defaultPort,
 		},
 		Content: ContentOptions{
 			StaticDir: "./static",
@@ -34,6 +36,7 @@ func NewHttpiumConfig() *HttpiumConfig {
 func (c *HttpiumConfig) Load() error {
 	configPath := "./config.toml"
 	_, err := os.Stat(configPath)
+
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}

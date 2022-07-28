@@ -2,7 +2,6 @@ package static
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -12,19 +11,19 @@ import (
 	"go.uber.org/zap"
 )
 
-type StaticFiles struct {
+type Files struct {
 	StaticDir string
 	lg        *zap.SugaredLogger
 }
 
-func NewStaticFiles(lg *zap.SugaredLogger, staticDir string) *StaticFiles {
-	return &StaticFiles{
+func NewStaticFiles(lg *zap.SugaredLogger, staticDir string) *Files {
+	return &Files{
 		lg:        lg,
 		StaticDir: staticDir,
 	}
 }
 
-func (s *StaticFiles) Handle(req *request.HttpRequest) *response.HttpResponse {
+func (s *Files) Handle(req *request.HTTPRequest) *response.HTTPResponse {
 	filePath := normalize(req.Path)
 	filePath = path.Join(s.StaticDir, filePath)
 
@@ -32,35 +31,35 @@ func (s *StaticFiles) Handle(req *request.HttpRequest) *response.HttpResponse {
 		return response.Response404()
 	}
 
-	fileContent, err := ioutil.ReadFile(filePath)
+	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
 		s.lg.Error("read file failed", "path", filePath, "err", err)
 		return response.Response404()
 	}
 
-	response := &response.HttpResponse{
+	res := &response.HTTPResponse{
 		Protocol: "HTTP/1.1",
-		Code:     200,
+		Code:     response.HTTPCodeOK,
 		Headers: map[string]string{
 			"Content-Type": "text/html; charset=UTF-8",
 		},
 		Content: fileContent,
 	}
 
-	return response
+	return res
 }
 
-func normalize(path string) string {
-	path = strings.TrimPrefix(path, "/")
-	path = strings.TrimPrefix(path, "\\")
+func normalize(reqPath string) string {
+	reqPath = strings.TrimPrefix(reqPath, "/")
+	reqPath = strings.TrimPrefix(reqPath, "\\")
 
-	path = strings.ReplaceAll(path, "../", "")
-	path = strings.ReplaceAll(path, "./", "")
-	path = strings.ReplaceAll(path, "\\", "/")
+	reqPath = strings.ReplaceAll(reqPath, "../", "")
+	reqPath = strings.ReplaceAll(reqPath, "./", "")
+	reqPath = strings.ReplaceAll(reqPath, "\\", "/")
 
-	if idx := strings.Index(path, "?"); idx != -1 {
-		path = path[:idx]
+	if idx := strings.Index(reqPath, "?"); idx != -1 {
+		reqPath = reqPath[:idx]
 	}
 
-	return path
+	return reqPath
 }
