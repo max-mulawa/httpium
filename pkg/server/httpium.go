@@ -28,7 +28,7 @@ type HTTPHandler interface {
 }
 
 var (
-	connectionAlive time.Duration = 10 * time.Second
+	connectionAlive = 10 * time.Second
 )
 
 func NewServer(ctx context.Context, lg *zap.SugaredLogger, cfg *config.HttpiumConfig) *HttpiumServer {

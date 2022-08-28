@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	requestLineTokensCnt   int = 3
-	requestHeaderTokensCnt int = 2
+	requestLineTokensCnt   = 3
+	requestHeaderTokensCnt = 2
 )
 
 func Parse(request string) (*HTTPRequest, error) {
