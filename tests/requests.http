@@ -1,5 +1,7 @@
 #regular get
 GET http://localhost:8080/index.html
+### get default
+GET http://localhost:8080/
 ### 404 request
 GET http://localhost:8080/index2.html
 ### sample 404

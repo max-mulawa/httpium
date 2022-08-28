@@ -20,6 +20,8 @@ func (s *Files) getLocalPath(relativePath string) (string, error) {
 				return path.Join(s.StaticDir, defaultFile), nil
 			}
 		}
+
+		return "", nil
 	}
 
 	exits, err := s.localFileExists(relativePath)

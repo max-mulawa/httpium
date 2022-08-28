@@ -28,11 +28,15 @@ uninstall-service:
 	sudo ./scripts/uninstall-service.sh
 
 docker-build:
-	docker build . -t localhost/httpium:dev
+	docker build . -t mulawam/httpium:latest
+
+docker-push: docker-build
+	docker login
+	docker push mulawam/httpium:latest
 
 docker-run: docker-build
 	$(info Run httpium on port 8080)
-	docker run --rm --name httpium -p 8080:8080 localhost/httpium:dev
+	docker run --rm --name httpium -p 8080:8080 mulawam/httpium:latest
 
 setup-dev: install-git-hooks
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest

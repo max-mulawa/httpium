@@ -12,7 +12,11 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/httpium ./cmd/server
 #RUN ls /app -la
 
 FROM alpine:latest as deploy
+WORKDIR /app
 COPY --from=build /app/httpium .
-ENTRYPOINT ["./httpium"]
+COPY ./config.toml .
+COPY ./static/* ./static/
+
+ENTRYPOINT ["/app/httpium"]
 
 EXPOSE 8080

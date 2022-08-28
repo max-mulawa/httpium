@@ -63,7 +63,7 @@ func TestMain(m *testing.M) {
 
 func TestStaticContent(t *testing.T) {
 	t.Parallel()
-	t.Run("existing file serverd", func(t *testing.T) {
+	t.Run("existing file served", func(t *testing.T) {
 		fileContent := "<html>ok!</html>"
 		writeTmpFile(t, contentFileName, fileContent)
 

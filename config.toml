@@ -3,3 +3,4 @@ port = 8080
 
 [content]
 staticDir = "./static"
+default = [ "index.html" ]

@@ -37,22 +37,30 @@ func (s *Files) Handle(req *request.HTTPRequest) *response.HTTPResponse {
 		return response.Response500()
 	}
 
+	if filePath == "" {
+		return okResponse([]byte("<html><body>Welcome to the world of httpium</body></html>"))
+	}
+
 	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
 		s.lg.Error("read file failed", "path", filePath, "err", err)
 		return response.Response500()
 	}
 
-	res := &response.HTTPResponse{
+	res := okResponse(fileContent)
+
+	return res
+}
+
+func okResponse(content []byte) *response.HTTPResponse {
+	return &response.HTTPResponse{
 		Protocol: "HTTP/1.1",
 		Code:     response.HTTPCodeOK,
 		Headers: map[string]string{
 			"Content-Type": "text/html; charset=UTF-8",
 		},
-		Content: fileContent,
+		Content: content,
 	}
-
-	return res
 }
 
 func normalize(reqPath string) string {
