@@ -19,9 +19,11 @@ import (
 )
 
 var (
-	tmpContentDir string
-	servicePort   uint = 8090
-	client             = http.Client{}
+	tmpContentDir   string
+	servicePort     uint = 8090
+	client               = http.Client{}
+	contentFileName      = "index.html"
+	defaultFileName      = "default.html"
 )
 
 func TestMain(m *testing.M) {
@@ -36,6 +38,7 @@ func TestMain(m *testing.M) {
 		},
 		Content: config.ContentOptions{
 			StaticDir: tmpContentDir,
+			Default:   []string{defaultFileName},
 		},
 	}
 	srv := server.NewServer(context.Background(), zap.NewNop().Sugar(), cfg)
@@ -60,20 +63,27 @@ func TestMain(m *testing.M) {
 
 func TestStaticContent(t *testing.T) {
 	t.Run("existing file serverd", func(t *testing.T) {
-		filePath := path.Join(tmpContentDir, "index.html")
 		fileContent := "<html>ok!</html>"
-		err := os.WriteFile(filePath, []byte(fileContent), 0o600)
-		require.NoError(t, err)
+		writeTmpFile(t, contentFileName, fileContent)
 
-		resp, err := client.Get(fmt.Sprintf("http://localhost:%d/index.html", servicePort))
+		resp, err := client.Get(fmt.Sprintf("http://localhost:%d/%s", servicePort, contentFileName))
 		require.NoError(t, err)
 
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
-		content, err := io.ReadAll(resp.Body)
+		responseContentEquals(t, resp, fileContent)
+	})
+
+	t.Run("default file served", func(t *testing.T) {
+		fileContent := "<html>default!</html>"
+		writeTmpFile(t, defaultFileName, fileContent)
+
+		resp, err := client.Get(fmt.Sprintf("http://localhost:%d/", servicePort))
 		require.NoError(t, err)
 
-		require.Equal(t, fileContent, string(content))
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		responseContentEquals(t, resp, fileContent)
 	})
 
 	t.Run("for missing file 404 error code returned", func(t *testing.T) {
@@ -84,4 +94,21 @@ func TestStaticContent(t *testing.T) {
 
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
+}
+
+func responseContentEquals(t *testing.T, resp *http.Response, fileContent string) {
+	t.Helper()
+
+	content, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	require.Equal(t, fileContent, string(content))
+}
+
+func writeTmpFile(t *testing.T, fileName, fileContent string) {
+	t.Helper()
+
+	filePath := path.Join(tmpContentDir, fileName)
+	err := os.WriteFile(filePath, []byte(fileContent), 0o600)
+	require.NoError(t, err)
 }

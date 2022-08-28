@@ -13,6 +13,7 @@ type ServerOptions struct {
 
 type ContentOptions struct {
 	StaticDir string
+	Default   []string
 }
 
 type HttpiumConfig struct {

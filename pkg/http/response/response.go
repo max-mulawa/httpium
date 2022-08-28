@@ -17,16 +17,18 @@ type HTTPResponse struct {
 type HTTPResponseCode uint
 
 var (
-	HTTPCodeOK       HTTPResponseCode = 200
-	HTTPCodeNotFound HTTPResponseCode = 404
+	HTTPCodeOK                HTTPResponseCode = 200
+	HTTPCodeNotFound          HTTPResponseCode = 404
+	HTTPCodeInternalServerErr HTTPResponseCode = 500
 )
 
 var codeAsText map[HTTPResponseCode]string
 
 func init() {
 	codeAsText = map[HTTPResponseCode]string{
-		HTTPResponseCode(uint(HTTPCodeOK)):       "OK",
-		HTTPResponseCode(uint(HTTPCodeNotFound)): "Not Found",
+		HTTPResponseCode(uint(HTTPCodeOK)):                "OK",
+		HTTPResponseCode(uint(HTTPCodeNotFound)):          "Not Found",
+		HTTPResponseCode(uint(HTTPCodeInternalServerErr)): "Internal Server Error",
 	}
 }
 
@@ -70,6 +72,17 @@ func Response404() *HTTPResponse {
 			"Content-Type": "text/html",
 		},
 		Content: []byte("<html>Page not found</html>"),
+	}
+}
+
+func Response500() *HTTPResponse {
+	return &HTTPResponse{
+		Protocol: "HTTP/1.1",
+		Code:     HTTPCodeInternalServerErr,
+		Headers: map[string]string{
+			"Content-Type": "text/html",
+		},
+		Content: []byte("<html>Internal Server Error occurred</html>"),
 	}
 }
 

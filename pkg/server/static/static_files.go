@@ -3,7 +3,6 @@ package static
 import (
 	"errors"
 	"os"
-	"path"
 	"strings"
 
 	"github.com/max-mulawa/httpium/pkg/http/request"
@@ -12,29 +11,36 @@ import (
 )
 
 type Files struct {
-	StaticDir string
-	lg        *zap.SugaredLogger
+	StaticDir    string
+	DefaultFiles []string
+	lg           *zap.SugaredLogger
 }
 
-func NewStaticFiles(lg *zap.SugaredLogger, staticDir string) *Files {
+func NewStaticFiles(lg *zap.SugaredLogger, staticDir string, defaultFiles []string) *Files {
 	return &Files{
-		lg:        lg,
-		StaticDir: staticDir,
+		lg:           lg,
+		StaticDir:    staticDir,
+		DefaultFiles: defaultFiles,
 	}
 }
 
 func (s *Files) Handle(req *request.HTTPRequest) *response.HTTPResponse {
-	filePath := normalize(req.Path)
-	filePath = path.Join(s.StaticDir, filePath)
+	relPath := normalize(req.Path)
 
-	if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
+	filePath, err := s.getLocalPath(relPath)
+	if errors.Is(err, ErrFileNotFound) {
 		return response.Response404()
+	}
+
+	if err != nil {
+		s.lg.Error("get local file path failed", "path", relPath, "err", err)
+		return response.Response500()
 	}
 
 	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
 		s.lg.Error("read file failed", "path", filePath, "err", err)
-		return response.Response404()
+		return response.Response500()
 	}
 
 	res := &response.HTTPResponse{
@@ -50,6 +56,10 @@ func (s *Files) Handle(req *request.HTTPRequest) *response.HTTPResponse {
 }
 
 func normalize(reqPath string) string {
+	if isDefaultPath(reqPath) {
+		return reqPath
+	}
+
 	reqPath = strings.TrimPrefix(reqPath, "/")
 	reqPath = strings.TrimPrefix(reqPath, "\\")
 

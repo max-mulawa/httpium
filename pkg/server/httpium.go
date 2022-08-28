@@ -35,7 +35,7 @@ func NewServer(ctx context.Context, lg *zap.SugaredLogger, cfg *config.HttpiumCo
 	return &HttpiumServer{
 		config:  cfg,
 		lg:      lg,
-		handler: static.NewStaticFiles(lg, cfg.Content.StaticDir),
+		handler: static.NewStaticFiles(lg, cfg.Content.StaticDir, cfg.Content.Default),
 		ctx:     ctx,
 	}
 }
